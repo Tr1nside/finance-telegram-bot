@@ -3,15 +3,31 @@ from datetime import datetime
 from pathlib import Path
 
 from telegram import Update
-from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
+from telegram.ext import (
+    Application,
+    CommandHandler,
+    MessageHandler,
+    ContextTypes,
+    filters,
+)
 
 from src.classifier import ExpenseClassifier
 from src.limit import LimitsService
 from src.storage import ExpenseRepository
-from src.domain import MONTHLY_LIMITS
+from src.domain import MONTHLY_LIMITS, Expense
+import os
+from dotenv import load_dotenv
+import logging
 
-DB_PATH = Path("expenses.db")
-TOKEN = "ТОКЕН_ТВОЕГО_БОТА_ОТ_BOTFATHER"
+logger = logging.getLogger(__name__)
+
+load_dotenv()
+
+TOKEN = os.getenv("TELEGRAM_TOKEN")
+DB_PATH = Path(os.getenv("DB_PATH", "expenses.db"))
+
+if not TOKEN:
+    raise ValueError("❌ TELEGRAM_TOKEN не найден в .env файле!")
 
 classifier = ExpenseClassifier()
 repository = ExpenseRepository(DB_PATH)
@@ -65,7 +81,9 @@ async def handle_expense(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     )
     repository.add(expense)
 
-    summary = repository.get_month_summary(user_id, datetime.now().month, datetime.now().year)
+    summary = repository.get_month_summary(
+        user_id, datetime.now().month, datetime.now().year
+    )
     spent_in_category = summary.get(category_code, 0.0)
     limit_for_category = MONTHLY_LIMITS.get(category_code)
     remaining_text = ""
@@ -122,6 +140,24 @@ async def main() -> None:
     )
 
     await application.run_polling()
+
+
+def create_application() -> Application:
+    """Создаёт настроенное приложение."""
+    from telegram.ext import Application, CommandHandler, MessageHandler, filters
+
+    application = Application.builder().token(TOKEN).build()
+
+    # Все handlers
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("limits", show_limits))
+    application.add_handler(CommandHandler("history", show_history))
+    application.add_handler(
+        MessageHandler(filters.TEXT & ~filters.COMMAND, handle_expense)
+    )
+
+    logger.info("✅ Приложение создано")
+    return application  # ← возвращаем!
 
 
 if __name__ == "__main__":

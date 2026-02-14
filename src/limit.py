@@ -1,5 +1,8 @@
 from datetime import datetime
 from typing import Final
+from src.domain import MONTHLY_LIMITS
+from src.storage import ExpenseRepository
+
 
 class LimitsService:
     _LIMITS: Final[dict[str, float]] = MONTHLY_LIMITS

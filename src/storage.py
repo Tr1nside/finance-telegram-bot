@@ -2,6 +2,8 @@ import sqlite3
 from pathlib import Path
 from contextlib import contextmanager
 from datetime import datetime
+from src.domain import Expense
+
 
 class ExpenseRepository:
     def __init__(self, db_path: Path) -> None:
@@ -49,7 +51,9 @@ class ExpenseRepository:
             )
             conn.commit()
 
-    def get_month_summary(self, user_id: int, month: int, year: int) -> dict[str, float]:
+    def get_month_summary(
+        self, user_id: int, month: int, year: int
+    ) -> dict[str, float]:
         query = """
             SELECT category_code, SUM(amount)
             FROM expenses
